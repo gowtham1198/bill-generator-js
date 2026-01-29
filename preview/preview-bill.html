@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bill Preview</title>
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#000;
+  color:#fff;
+}
+.container{
+  width:900px;
+  margin:20px auto;
+  background:#111;
+  padding:20px;
+  border:2px solid #d4af37;
+}
+.header{
+  display:flex;
+  align-items:center;
+  gap:15px;
+}
+.logo{ width:70px; }
+.company{ flex:1; text-align:center; }
+.company h1{ margin:0; color:#d4af37; }
+.company p{ margin:4px 0 0; font-size:13px; color:#f5d76e; }
+
+.row{
+  display:flex;
+  align-items:center;
+  margin-bottom:10px;
+}
+.row label{
+  width:220px;
+  color:#f5d76e;
+  font-weight:bold;
+}
+.row input{
+  width:260px;
+  padding:6px;
+  background:#000;
+  color:#fff;
+  border:1.5px solid #d4af37;
+}
+
+.signature-box{
+  width:220px;
+  height:90px;
+  border:1.5px solid #d4af37;
+}
+
+.actions{
+  text-align:center;
+  margin-top:20px;
+}
+button{
+  background:linear-gradient(135deg,#d4af37,#ffd700);
+  border:none;
+  padding:8px 20px;
+  font-weight:bold;
+  cursor:pointer;
+  margin:0 10px;
+}
+
+@media print{
+  .actions{ display:none; }
+  body{ background:#fff; color:#000; }
+  .container{ border:none; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container" id="billPreview">
+
+  <div class="header">
+    <img src="../logo.png" class="logo">
+    <div class="company">
+      <h1>MAYA GOLD FINANCE</h1>
+      <p>
+        AS Complex, Usilampatti Main Road, Viruveedu<br>
+        📞 9150535001
+      </p>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="row"><label>Serial No</label><input id="pSerial" readonly></div>
+  <div class="row"><label>Customer Name</label><input id="pCustomer" readonly></div>
+  <div class="row"><label>Payment Date</label><input id="pDate" readonly></div>
+  <div class="row"><label>EMI Amount</label><input id="pEmi" readonly></div>
+  <div class="row"><label>Penalty Amount</label><input id="pPenalty" readonly></div>
+  <div class="row"><label>Total Amount</label><input id="pTotal" readonly></div>
+  <div class="row"><label>Total (Words)</label><input id="pWords" readonly></div>
+  <div class="row"><label>Payment Mode</label><input id="pMode" readonly></div>
+
+  <div class="row">
+    <label>Authorized Signature</label>
+    <canvas class="signature-box"></canvas>
+  </div>
+
+  <!-- ✅ PRINT ONLY -->
+  <div class="actions">
+    <button onclick="window.print()">🖨 Print</button>
+  </div>
+
+</div>
+
+<script>
+const billId = localStorage.getItem("previewBillId");
+const history = JSON.parse(localStorage.getItem("billHistory")) || [];
+const bill = history.find(b => b.id == billId);
+
+if(!bill){
+  alert("Bill not found");
+}
+
+pSerial.value   = bill.serial;
+pCustomer.value = bill.customer;
+pDate.value     = bill.date;
+pEmi.value      = bill.emi ?? "";
+pPenalty.value  = bill.penalty ?? "";
+pTotal.value    = bill.total;
+pMode.value     = bill.mode;
+pWords.value    = bill.total ? inWords(bill.total)+" Rupees Only" : "";
+
+function inWords(num){
+ const a=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten",
+ "Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+ const b=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+ let str="";
+ if(num>=1000){str+=inWords(Math.floor(num/1000))+" Thousand ";num%=1000;}
+ if(num>=100){str+=inWords(Math.floor(num/100))+" Hundred ";num%=100;}
+ if(num>0){if(str)str+="and ";str+=num<20?a[num]:b[Math.floor(num/10)]+" "+a[num%10];}
+ return str.trim();
+}
+</script>
+
+</body>
+</html>

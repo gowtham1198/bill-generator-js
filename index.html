@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline';">
+<meta charset="UTF-8">
+<title>Maya Gold Finance</title>
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#000;
+  color:#fff;
+}
+.container{
+  width:900px;
+  margin:20px auto;
+  background:#111;
+  padding:20px;
+  border:2px solid #d4af37;
+}
+button{
+  background:linear-gradient(135deg,#d4af37,#ffd700);
+  border:none;
+  padding:8px 20px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+/* HEADER */
+.header{
+  display:flex;
+  align-items:center;
+  gap:15px;
+}
+.logo{ width:70px; }
+.company{ flex:1; text-align:center; }
+.company h1{ margin:0; color:#d4af37; }
+.company p{ margin:4px 0 0; font-size:13px; color:#f5d76e; }
+
+/* NAV */
+.nav-buttons{
+  display:flex;
+  justify-content:flex-end;
+  margin:10px 0 20px;
+}
+.nav-buttons button{ margin-left:10px; }
+
+/* FORM */
+.row{
+  display:flex;
+  align-items:center;
+  margin-bottom:10px;
+}
+.row label{
+  width:220px;
+  color:#f5d76e;
+  font-weight:bold;
+}
+.row input,
+.row select{
+  width:260px;
+  padding:6px;
+  background:#000;
+  color:#fff;
+  border:1.5px solid #d4af37;
+}
+.signature-box{
+  width:220px;
+  height:90px;
+  border:1.5px solid #d4af37;
+}
+
+/* HISTORY */
+#historySection{ display:none; }
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+th,td{
+  border:1px solid #d4af37;
+  padding:6px;
+  font-size:13px;
+  text-align:center;
+}
+th{ background:#222; color:#ffd700; }
+.delete-btn{ background:#ff4d4d; color:#000; padding:4px 10px; }
+.view-btn{ background:#4dd2ff; padding:4px 10px; cursor:pointer; }
+
+.pagination{
+  text-align:center;
+  margin-top:10px;
+}
+.pagination button{
+  margin:0 3px;
+  padding:4px 10px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<!-- ================= BILL ================= -->
+<div id="billSection">
+
+  <div class="header">
+    <img src="logo.png" class="logo">
+    <div class="company">
+      <h1>MAYA GOLD FINANCE</h1>
+      <p>AS Complex, Usilampatti Main Road, Viruveedu<br>📞 9150535001</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button onclick="showBill()">🧾 Create Bill</button>
+    <button onclick="showHistory()">📜 View History</button>
+  </div>
+
+  <hr>
+
+  <div class="row"><label>Serial No</label><input id="serialNo" readonly></div>
+  <div class="row"><label>Customer Name *</label><input id="customer"></div>
+  <div class="row"><label>Payment Date</label><input type="date" id="paymentDate"></div>
+  <div class="row"><label>EMI Amount *</label><input id="emi"></div>
+  <div class="row"><label>Penalty Amount</label><input id="penalty"></div>
+  <div class="row"><label>Total Amount</label><input id="total" readonly></div>
+  <div class="row"><label>Total (Words)</label><input id="amountWords" readonly></div>
+
+  <div class="row">
+    <label>Payment Mode</label>
+    <select id="mode">
+      <option>Cash</option>
+      <option>UPI</option>
+      <option>Card</option>
+      <option>Bank Transfer</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <label>Authorized Signature</label>
+    <canvas id="signature" class="signature-box"></canvas>
+  </div>
+
+  <div class="nav-buttons">
+    <button onclick="saveBill()">💾 Save Bill</button>
+  </div>
+</div>
+
+<!-- ================= HISTORY ================= -->
+<div id="historySection">
+
+  <div class="nav-buttons">
+    <button onclick="showBill()">🧾 Create Bill</button>
+  </div>
+
+  <div class="row">
+    <label>Select Month</label>
+    <input type="month" id="monthFilter">
+  </div>
+
+  <!-- ✅ ONLY NEW ADDITION -->
+  <button onclick="downloadExcel()">⬇️ Download Excel</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Serial</th>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Total</th>
+        <th>Mode</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+
+  <div class="pagination" id="pagination"></div>
+</div>
+
+</div>
+
+<script>
+let currentPage = 1;
+const ROWS = 10;
+
+function showBill(){
+  billSection.style.display="block";
+  historySection.style.display="none";
+}
+function showHistory(){
+  billSection.style.display="none";
+  historySection.style.display="block";
+  currentPage = 1;
+  renderHistory();
+}
+
+let serial = Number(localStorage.getItem("billSerial")) || 1;
+serialNo.value = String(serial).padStart(3,"0");
+paymentDate.value = new Date().toISOString().split("T")[0];
+
+function onlyNumber(el){ el.value = el.value.replace(/[^0-9]/g,""); }
+function calc(){
+  const t = (+emi.value||0)+(+penalty.value||0);
+  total.value = t;
+  amountWords.value = t ? inWords(t)+" Rupees Only" : "";
+}
+emi.addEventListener("input",()=>{ onlyNumber(emi); calc(); });
+penalty.addEventListener("input",()=>{ onlyNumber(penalty); calc(); });
+
+function saveBill(){
+  if(!customer.value||!emi.value) return alert("Required fields missing");
+  const h = JSON.parse(localStorage.getItem("billHistory")) || [];
+  h.push({
+    id:Date.now(),
+    serial:serialNo.value,
+    customer:customer.value,
+    date:paymentDate.value,
+    month:paymentDate.value.slice(0,7),
+    emi:+emi.value||0,
+    penalty:+penalty.value||0,
+    total:(+emi.value||0)+(+penalty.value||0),
+    mode:mode.value
+  });
+  localStorage.setItem("billHistory",JSON.stringify(h));
+  serial++; localStorage.setItem("billSerial",serial);
+  serialNo.value=String(serial).padStart(3,"0");
+  customer.value=emi.value=penalty.value=total.value=amountWords.value="";
+  alert("Saved ✅");
+}
+
+function renderHistory(){
+  const history = JSON.parse(localStorage.getItem("billHistory")) || [];
+  const month = monthFilter.value;
+  const filtered = history.filter(h=>!month||h.month===month);
+
+  const start = (currentPage-1)*ROWS;
+  const pageData = filtered.slice(start,start+ROWS);
+
+  historyBody.innerHTML="";
+  pageData.forEach(h=>{
+    historyBody.innerHTML+=`
+      <tr>
+        <td>${h.serial}</td>
+        <td>${h.date}</td>
+        <td>${h.customer}</td>
+        <td>${h.total}</td>
+        <td>${h.mode}</td>
+        <td>
+          <button class="view-btn" onclick="viewBill(${h.id})">👁️</button>
+          <button class="delete-btn" onclick="deleteHistory(${h.id})">🗑</button>
+        </td>
+      </tr>`;
+  });
+
+  renderPagination(filtered.length);
+}
+
+function renderPagination(total){
+  const pages = Math.ceil(total/ROWS);
+  pagination.innerHTML="";
+  for(let i=1;i<=pages;i++){
+    pagination.innerHTML+=
+      `<button onclick="currentPage=${i};renderHistory()">${i}</button>`;
+  }
+}
+
+function viewBill(id){
+  localStorage.setItem("previewBillId",id);
+  window.open("preview/bill-preview.html","_blank");
+}
+
+function deleteHistory(id){
+  if(prompt("Admin password")!=="1234") return;
+  let h=JSON.parse(localStorage.getItem("billHistory"))||[];
+  h=h.filter(x=>x.id!==id);
+  localStorage.setItem("billHistory",JSON.stringify(h));
+  renderHistory();
+}
+
+function inWords(num){
+ const a=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten",
+ "Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+ const b=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+ let str="";
+ if(num>=1000){str+=inWords(Math.floor(num/1000))+" Thousand ";num%=1000;}
+ if(num>=100){str+=inWords(Math.floor(num/100))+" Hundred ";num%=100;}
+ if(num>0){if(str)str+="and ";str+=num<20?a[num]:b[Math.floor(num/10)]+" "+a[num%10];}
+ return str.trim();
+}
+
+function downloadExcel(){
+  const history = JSON.parse(localStorage.getItem("billHistory")) || [];
+  const month = monthFilter.value;
+
+  if(!month){
+    alert("Please select month");
+    return;
+  }
+
+  const filtered = history.filter(h => h.month === month);
+  if(filtered.length === 0){
+    alert("Selected month la data illa");
+    return;
+  }
+
+  let csv = "Serial,Date,Customer,EMI,Penalty,Total,Mode\n";
+  filtered.forEach(h=>{
+    csv += `${h.serial},${h.date},${h.customer},${h.emi},${h.penalty},${h.total},${h.mode}\n`;
+  });
+
+  const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Maya_Gold_Finance_${month}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+</script>
+</body>
+</html>
